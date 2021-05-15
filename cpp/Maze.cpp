@@ -9,19 +9,6 @@ Maze::Node::Node(size_t _id)
 std::ostream& operator<<(std::ostream& os, const Maze::Node& n)
 {
     os << n.id;
-    // os << " <";
-    // if (n.state.first == 0)
-    //     os << "U";
-    // else
-    //     os << "V";
-    // os << " , ";
-    // if (n.state.first == 1 &&  n.state.second==-1)
-    //     os << "s";
-    // else if (n.state.first == 1 &&  n.state.second==0)
-    //     os << "n";
-    // else if (n.state.first == 1 &&  n.state.second==1)
-    //     os << "e";
-    // os << ">";
     return os;
 }
 
@@ -203,7 +190,7 @@ void Maze::show()
                     if (Board[i][j]->is_true_dir)
                         std::cout << " * ";
                     else
-                        std::cout << " v ";
+                        std::cout << "   ";
 
                 }
                 else
@@ -267,3 +254,103 @@ void Maze::Add_walls()
 
 }
 
+void Maze::unvisiting()
+{
+    for (size_t i = 0; i < row; i++)
+    {
+        for (size_t j = 0; j < col; j++)
+        {
+            Board[i][j]->availableDirections.clear();
+            Board[i][j]->visited = false;
+            if (Board[i][j]->North.second != -1)
+                Board[i][j]->availableDirections.push_back(Board[i][j]->North);
+            if (Board[i][j]->South.second != -1)
+                Board[i][j]->availableDirections.push_back(Board[i][j]->South);
+            if (Board[i][j]->East.second != -1)
+                Board[i][j]->availableDirections.push_back(Board[i][j]->East);
+            if (Board[i][j]->West.second != -1)
+                Board[i][j]->availableDirections.push_back(Board[i][j]->West);
+        }
+    }
+}
+
+void Maze::solve_DFS()
+{
+    std::stack<std::shared_ptr<Node>> True_Dir;
+    start->visited = true;
+    True_Dir.push(start);
+    Go_deap(True_Dir);
+
+    while (!True_Dir.empty()) {
+        True_Dir.top()->is_true_dir = true;
+        std::cout << *True_Dir.top();
+        True_Dir.pop();
+        if (!True_Dir.empty())
+            std::cout << " -> ";
+    }
+    std::cout << std::endl;
+}
+
+void Maze::Go_deap(std::stack<std::shared_ptr<Node>>& True_Dir)
+{
+    if (True_Dir.top() != end)
+    {
+       if (!True_Dir.top()->availableDirections.empty())
+        {
+            size_t mysize = (True_Dir.top()->availableDirections).size();
+            std::pair<std::shared_ptr<Node>,int> selected = make_pair(True_Dir.top()->availableDirections[ Maze::Random_generator(mysize)].first,True_Dir.top()->availableDirections[Maze::Random_generator(mysize)].second);
+            selected.first->visited = true;
+            selected.first->Update_availableDirections();
+            True_Dir.push(selected.first);
+            True_Dir.top()->Update_availableDirections();
+            Go_deap(True_Dir);
+        }
+        else
+        {
+            True_Dir.pop();
+            True_Dir.top()->Update_availableDirections();
+            Go_deap(True_Dir);
+        }
+    }
+    
+}
+
+void Maze::solve_BFS()
+{
+    std::queue<std::shared_ptr<Node>> frontier;
+    frontier.push(start);
+    while (frontier.front() != end)
+    {
+        frontier.front()->visited = true;
+        frontier.front()->Update_availableDirections();
+        std::shared_ptr<Node> p = frontier.front();
+        frontier.pop();
+        for(auto ch : p->availableDirections)
+        {
+            ch.first->parent = p;
+            frontier.push(ch.first);
+            frontier.front()->Update_availableDirections();
+        }
+    }
+    std::stack<std::shared_ptr<Node>> short_dir;
+    end->make_dir(short_dir);
+    while (!short_dir.empty()) {
+        short_dir.top()->is_true_dir = true;
+        std::cout << *short_dir.top();
+        short_dir.pop();
+        if (!short_dir.empty())
+            std::cout << " -> ";
+    }
+    std::cout << std::endl;
+    
+}
+
+void Maze::Node::make_dir(std::stack<std::shared_ptr<Node>>& short_dir)
+{
+    if (parent != nullptr)
+    {
+        short_dir.push(parent);
+        parent->make_dir(short_dir);
+    }
+    
+}
