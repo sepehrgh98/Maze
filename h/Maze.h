@@ -62,6 +62,7 @@ private:
     void Go_deap(std::stack<std::shared_ptr<Node>>&);
     void Go_bread(std::stack<std::shared_ptr<Node>>&);
     void Add_walls();
+    void find_end();
     size_t visited_counter = 0;
 };
 

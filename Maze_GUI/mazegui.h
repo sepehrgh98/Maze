@@ -17,7 +17,9 @@
 #include <ctime>
 #include <algorithm>
 #include <queue>
-
+#include <graphics_view_zoom.h>
+#include <QPixmap>
+#include <QThread>
 
 
 QT_BEGIN_NAMESPACE
@@ -53,17 +55,13 @@ public:
         };
         void Update_availableDirections();
         void set_dir_flags(std::shared_ptr<Node> select);
-        QGraphicsEllipseItem * Me;
+        QGraphicsEllipseItem * Me{nullptr};
         std::shared_ptr<Node> parent{nullptr};
         size_t id;
-
-    private:
-
     };
     MazeGUI(QWidget *parent = nullptr);
     ~MazeGUI();
     void unvisiting();
-    long fibo(unsigned n);
 
 private:
     Ui::MazeGUI *ui;
@@ -86,20 +84,44 @@ private:
     void paint_walls();
     void clear();
     void make_dir(std::stack<std::shared_ptr<Node>>&, std::shared_ptr<Node>);
+    void find_end();
     char DFS_or_BFS;
     int visited_counter = 0;
-
+    size_t step{0};
     std::stack<std::shared_ptr<Node>> True_Dir;
     std::queue<std::shared_ptr<Node>> frontier;
+    std::vector<QGraphicsRectItem *> masir;
+    std::vector<std::shared_ptr<Node>> visitedNodes;
 
 
 
 private slots:
     void generatebtnPressed();
     void clearbtnPressed();
+    void gobtnPressed();
     void DFSbtnPressed();
     void BFSbtnPressed();
     void nextbtnPressed();
-//    void prebtnPressed();
+    void anotherbtnPressed();
+    void onProgress( int i );
+    void ProgressFinished();
 };
 #endif // MAZEGUI_H
+
+class Thread : public QThread
+{
+    Q_OBJECT
+
+signals:
+    void progress( int value );
+
+private:
+    void run()
+    {
+        for(int i = 0; i <= 100; i++ )
+        {
+            emit progress( i );
+            QThread::msleep(50);
+        }
+    }
+};

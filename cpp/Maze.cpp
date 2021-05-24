@@ -75,6 +75,9 @@ void Maze::Maze_Generator()
     visited_counter++;
     Go_to_Generation(myDirection);
     Add_walls();
+    unvisiting();
+    find_end();
+    unvisiting();
 }
 
 int Maze::Random_generator(size_t size)
@@ -111,8 +114,8 @@ void Maze::Go_to_Generation(std::stack<std::shared_ptr<Node>> myDirection)
     }
     else
     {
-        myDirection.top()->is_end = true;
-        end = myDirection.top();
+        // myDirection.top()->is_end = true;
+        // end = myDirection.top();
     }
 }
 
@@ -190,7 +193,7 @@ void Maze::show()
                     if (Board[i][j]->is_true_dir)
                         std::cout << " * ";
                     else
-                        std::cout << "   ";
+                        std::cout << " v ";
 
                 }
                 else
@@ -353,4 +356,34 @@ void Maze::Node::make_dir(std::stack<std::shared_ptr<Node>>& short_dir)
         parent->make_dir(short_dir);
     }
     
+}
+
+
+void Maze::find_end()
+{
+    std::queue<std::shared_ptr<Node>> frontier;
+    frontier.push(start);
+    size_t visited_node_counter=0;
+    while(visited_node_counter < row*col)
+    {
+        
+        frontier.front()->visited = true;
+        frontier.front()->Update_availableDirections();
+        std::shared_ptr<Node> p = frontier.front();
+        frontier.pop();
+        for(auto ch : p->availableDirections)
+        {
+            ch.first->parent = p;
+            frontier.push(ch.first);
+            frontier.front()->Update_availableDirections();
+        }
+        visited_node_counter++;
+        if (visited_node_counter == row*col/3)
+        {
+            end = p->availableDirections[Maze::Random_generator(p->availableDirections.size())].first;
+            end->is_end = true;
+            break;
+        }
+            
+    }
 }

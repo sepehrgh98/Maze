@@ -7,17 +7,16 @@
 MazeGUI::Node::Node(size_t _id)
     : id{_id}
 {
-//     std::cout << "Node " << id << " created!" << std::endl;
-     QBrush cyanBrush(Qt::cyan);
-     QPen cyanPen(Qt::cyan);
-     cyanPen.setWidth(0);
-
+     QColor red("#CB4E4E");
+     QBrush redBrush(red);
+     QPen redPen(red);
+     redPen.setWidth(0);
      MazeGUI::GMaze = new QGraphicsItemGroup();
      recGroup = new QGraphicsItemGroup(MazeGUI::GMaze);
      mainNode = new QGraphicsItemGroup(recGroup);
      QGraphicsRectItem *mainBox = new QGraphicsRectItem(QRectF(-10,-10,20,20),mainNode);
-     mainBox->setBrush(cyanBrush);
-     mainBox->setPen(cyanPen);
+     mainBox->setBrush(redBrush);
+     mainBox->setPen(redPen);
 }
 
 MazeGUI::MazeGUI(QWidget *parent)
@@ -25,36 +24,80 @@ MazeGUI::MazeGUI(QWidget *parent)
     , ui(new Ui::MazeGUI)
 {
     ui->setupUi(this);
+    this->setStyleSheet("background-color: #70B67A;");
+    ui->mainPage->setHidden(true);
+
+    QPixmap pixmap(":/images/logo.png");
+    ui->logoBox->setPixmap(pixmap);
+    ui->logoBox->setScaledContents( true );
+    ui->logoBox->setSizePolicy( QSizePolicy::Ignored, QSizePolicy::Ignored );
+
+    ui->progressBar->setMaximum(100);
+    ui->progressBar->setValue(0);
+
+
+    Graphics_view_zoom* z = new Graphics_view_zoom(ui->graphicsView);
+    z->set_modifiers(Qt::NoModifier);
+
+    ui->controlBar->setHidden(true);
+    ui->gobtn->setHidden(true);
+    ui->logo2->setPixmap(pixmap);
+    ui->logo2->setScaledContents( true );
+    ui->logo2->setSizePolicy( QSizePolicy::Ignored, QSizePolicy::Ignored );
+    ui->nextstepbtn->setHidden(true);
+    ui->anotherwaybtn->setHidden(true);
+    ui->steplabel->setHidden(true);
+    ui->stepnumber->setHidden(true);
+
+    ui->stepnumber->setText(QString::number(step));
+
+    ui->levelBox->addItems(QStringList{"Easy","Normal","Hard"});
+    ui->levelBox->setCurrentIndex(1);
+
+    //gobtn
+    connect(ui->gobtn, SIGNAL(released()), this, SLOT(gobtnPressed()));
 
     //rowSpinBox
-    ui->rowspinBox->setRange(3,30);
+    ui->rowspinBox->setRange(3,100);
 
     //colSpinBox
-    ui->colspinBox->setRange(3,30);
+    ui->colspinBox->setRange(3,100);
 
     //generatebtn
     connect(ui->generatebtn, SIGNAL(released()), this, SLOT(generatebtnPressed()));
 
     //clear
     ui->clearbtn->setEnabled(false);
+    ui->clearbtn->setHidden(true);
     connect(ui->clearbtn, SIGNAL(released()), this, SLOT(clearbtnPressed()));
 
     //DFSbtn
-    ui->BFSbtn->setEnabled(false);
     connect(ui->BFSbtn, SIGNAL(released()), this, SLOT(BFSbtnPressed()));
 
 
     //BFSbtn
-    ui->DFSbtn->setEnabled(false);
     connect(ui->DFSbtn, SIGNAL(released()), this, SLOT(DFSbtnPressed()));
 
     //nextbtn
-    ui->nextstepbtn->setEnabled(false);
     connect(ui->nextstepbtn, SIGNAL(released()), this, SLOT(nextbtnPressed()));
 
-    //prebtn
-    ui->prestepbtn->setEnabled(false);
+    //anotherbtn
+    connect(ui->anotherwaybtn, SIGNAL(released()), this, SLOT(anotherbtnPressed()));
+
 }
+
+void MazeGUI::onProgress( int i )
+{
+    ui->progressBar->setValue(i);
+}
+
+
+void MazeGUI::ProgressFinished()
+{
+    ui->welcomePage->setHidden(true);
+    ui->mainPage->setHidden(false);
+}
+
 
 MazeGUI::~MazeGUI()
 {
@@ -63,14 +106,20 @@ MazeGUI::~MazeGUI()
 
 void MazeGUI::clear()
 {
-    for (int16_t i = 0; i < row; i++)
+    for (int i = 0; i < row; i++)
     {
         for (int j = 0; j < col; j++)
         {
+            if(Board[i][j]->Me != nullptr)
+            {
+                delete Board[i][j]->Me;
+            }
+
             for(auto ch: Board[i][j]->mainNode->childItems())
             {
                 delete ch;
             }
+
             delete Board[i][j]->mainNode;
             for(auto ch: Board[i][j]->top->childItems())
             {
@@ -96,22 +145,94 @@ void MazeGUI::clear()
             Board[i][j] = nullptr;
         }
     }
+
+    //start
     delete Qstart;
+
+    //end
     delete Qend;
-    visited_counter=0;
-    Board.clear();
+
+    //clear masir
+    if(!masir.empty())
+    {
+        for(auto& rec:masir)
+            delete rec;
+        masir.clear();
+    }
+
+    //clear scene
     scene->clear();
-//    delete scene;
+
+    //clear Board vector
+    Board.clear();
+
+    //clear visited_counter
+    visited_counter=0;
+
+    //update step
+    step=0;
+    ui->stepnumber->setText(QString::number(step));
+
+    while (! frontier.empty())
+        frontier.pop();
+
     ui->graphicsView->update();
+}
+
+
+void MazeGUI::gobtnPressed()
+{
+    ui->controlBar->setHidden(false);
+    ui->logoWidget->setHidden(true);
+    ui->DFSbtn->setHidden(false);
+    ui->DFSbtn->setEnabled(true);
+    ui->BFSbtn->setHidden(false);
+    ui->BFSbtn->setEnabled(true);
+    ui->steplabel->setHidden(true);
+    ui->stepnumber->setHidden(true);
+    ui->nextstepbtn->setHidden(true);
+    ui->stepnumber->setText(QString::number(step));
+}
+
+void MazeGUI::anotherbtnPressed()
+{
+    for(auto& n:visitedNodes)
+    {
+        if(n->Me != nullptr)
+        {
+            delete n->Me;
+            n->Me = nullptr;
+        }
+
+
+    }
+    while (! frontier.empty())
+        frontier.pop();
+
+    if(!masir.empty())
+    {
+        for(auto& rec:masir)
+            delete rec;
+        masir.clear();
+    }
+
+    step = 0;
+    ui->stepnumber->setText(QString::number(step));
+    ui->DFSbtn->setHidden(false);
+    ui->DFSbtn->setEnabled(true);
+    ui->BFSbtn->setHidden(false);
+    ui->BFSbtn->setEnabled(true);
+    ui->steplabel->setHidden(true);
+    ui->stepnumber->setHidden(true);
+    ui->nextstepbtn->setHidden(true);
+    ui->anotherwaybtn->setHidden(true);
+    ui->HTSlabel->setText("How to Solve?");
 }
 
 void MazeGUI::generatebtnPressed()
 {
-    std::cout << "generation" << std::endl;
     //graphical view
     scene = new QGraphicsScene(this);
-    scene->addLine(-447,0,447,0,QPen(Qt::blue));
-    scene->addLine(0,-260,0,260,QPen(Qt::blue));
     ui->graphicsView->setScene(scene);
     row = ui->rowspinBox->value();
     col = ui->colspinBox->value();
@@ -120,44 +241,68 @@ void MazeGUI::generatebtnPressed()
     Add_neighbors();
     Maze_Generator();
     ui->clearbtn->setEnabled(true);
+    ui->clearbtn->setHidden(false);
     ui->generatebtn->setEnabled(false);
-    ui->BFSbtn->setEnabled(true);
-    ui->DFSbtn->setEnabled(true);
+    ui->generatebtn->setHidden(true);
+    ui->gobtn->setHidden(false);
 }
 
 void MazeGUI::clearbtnPressed()
 {
     clear();
     ui->generatebtn->setEnabled(true);
+    ui->generatebtn->setHidden(false);
+
     ui->clearbtn->setEnabled(false);
+    ui->clearbtn->setHidden(true);
+
+    ui->controlBar->setHidden(true);
+    ui->logoWidget->setHidden(false);
+
+    ui->gobtn->setHidden(true);
 }
 
 void MazeGUI::DFSbtnPressed()
 {
-    DFS_or_BFS = 'd';
-    ui->BFSbtn->setEnabled(false);
-    unvisiting();
     QBrush whiteBrush(Qt::white);
     QPen whitePen(Qt::white);
     whitePen.setWidth(0);
+
+    ui->HTSlabel->setText("DFS");
+    DFS_or_BFS = 'd';
+    ui->BFSbtn->setEnabled(false);
+    ui->BFSbtn->setHidden(true);
+    ui->DFSbtn->setEnabled(false);
+    ui->DFSbtn->setHidden(true);
+    ui->nextstepbtn->setHidden(false);
+    ui->anotherwaybtn->setHidden(false);
+    ui->steplabel->setHidden(false);
+    ui->stepnumber->setHidden(false);
+
+    unvisiting();
+    visitedNodes.clear();
+
     start->Me = new QGraphicsEllipseItem(start->recGroup->pos().rx()-5,start->recGroup->pos().ry()-5,10,10);
     start->Me->setBrush(whiteBrush);
     start->Me->setPen(whitePen);
     scene->addItem(start->Me);
     ui->nextstepbtn->setEnabled(true);
     start->visited = true;
+    visitedNodes.push_back(start);
     True_Dir.push(start);
 }
 
-
 void MazeGUI::nextbtnPressed()
 {
+    step++;
+    ui->stepnumber->setText(QString::number(step));
     QBrush whiteBrush(Qt::white);
     QPen whitePen(Qt::white);
     whitePen.setWidth(0);
-    QBrush cyanBrush(Qt::cyan);
     QPen blackPen(Qt::black);
     blackPen.setWidth(0);
+    QColor red("#CB4E4E");
+    QBrush redBrush(red);
 
     if(DFS_or_BFS == 'd'){
         if (True_Dir.top() != end)
@@ -167,6 +312,7 @@ void MazeGUI::nextbtnPressed()
                     size_t mysize = (True_Dir.top()->availableDirections).size();
                     std::pair<std::shared_ptr<Node>,int> selected = make_pair(True_Dir.top()->availableDirections[ MazeGUI::Random_generator(mysize)].first,True_Dir.top()->availableDirections[MazeGUI::Random_generator(mysize)].second);
                     selected.first->visited = true;
+                    visitedNodes.push_back(selected.first);
                     selected.first->Update_availableDirections();
                     selected.first->parent = True_Dir.top();
                     True_Dir.push(selected.first);
@@ -180,9 +326,10 @@ void MazeGUI::nextbtnPressed()
                 }
                 else
                 {
+                   delete True_Dir.top()->Me;
                    True_Dir.top()->Me = new QGraphicsEllipseItem(True_Dir.top()->recGroup->pos().rx()-5,True_Dir.top()->recGroup->pos().ry()-5,10,10);
-                   True_Dir.top()->Me->setBrush(cyanBrush);
-                   True_Dir.top()->Me->setPen(blackPen);
+                   True_Dir.top()->Me->setBrush(redBrush);
+                   True_Dir.top()->Me->setPen(whitePen);
                    scene->addItem(True_Dir.top()->Me);
                    True_Dir.pop();
                    True_Dir.top()->Update_availableDirections();
@@ -198,12 +345,16 @@ void MazeGUI::nextbtnPressed()
                     if((True_Dir.top()->Directions)["North"].first == True_Dir.top()->parent)
                     {
                         Dir = new QGraphicsRectItem(QRectF(True_Dir.top()->recGroup->pos().rx()-2.5,True_Dir.top()->recGroup->pos().ry()-25,5,30));
+                        masir.push_back(Dir);
                     }else if((True_Dir.top()->Directions)["South"].first == True_Dir.top()->parent){
                         Dir = new QGraphicsRectItem(QRectF(True_Dir.top()->recGroup->pos().rx()-2.5,True_Dir.top()->recGroup->pos().ry(),5,30));
+                        masir.push_back(Dir);
                     }else if((True_Dir.top()->Directions)["East"].first == True_Dir.top()->parent){
                         Dir = new QGraphicsRectItem(QRectF(True_Dir.top()->recGroup->pos().rx()-2.5,True_Dir.top()->recGroup->pos().ry()-2.5,30,5));
+                        masir.push_back(Dir);
                     }else{
                         Dir = new QGraphicsRectItem(QRectF(True_Dir.top()->recGroup->pos().rx()-30,True_Dir.top()->recGroup->pos().ry()-2.5,30,5));
+                        masir.push_back(Dir);
                     }
                     Dir->setBrush(whiteBrush);
                     Dir->setPen(whitePen);
@@ -212,32 +363,40 @@ void MazeGUI::nextbtnPressed()
                 True_Dir.pop();
 
             }
+            ui->nextstepbtn->setHidden(true);
+            ui->nextstepbtn->setEnabled(false);
         }
     }else{
         if(frontier.front() != end)
         {
             frontier.front()->visited = true;
+            visitedNodes.push_back(frontier.front());
             frontier.front()->Update_availableDirections();
             std::shared_ptr<Node> p = frontier.front();
+            if(frontier.front() != start)
+            {
+                p->Me = new QGraphicsEllipseItem(p->recGroup->pos().rx()-5,p->recGroup->pos().ry()-5,10,10);
+                p->Me->setBrush(whiteBrush);
+                p->Me->setPen(whitePen);
+                scene->addItem(p->Me);
+            }
 
-            p->Me = new QGraphicsEllipseItem(p->recGroup->pos().rx()-5,p->recGroup->pos().ry()-5,10,10);
-            p->Me->setBrush(whiteBrush);
-            p->Me->setPen(whitePen);
-            scene->addItem(p->Me);
             frontier.pop();
-            for(auto ch : p->availableDirections)
+            for(auto& ch : p->availableDirections)
             {
                 ch.first->parent = p;
                 frontier.push(ch.first);
                 frontier.front()->Update_availableDirections();
             }
         }else{
+            frontier.front()->visited = true;
+            visitedNodes.push_back(frontier.front());
             frontier.front()->Me = new QGraphicsEllipseItem(frontier.front()->recGroup->pos().rx()-5,frontier.front()->recGroup->pos().ry()-5,10,10);
             frontier.front()->Me->setBrush(whiteBrush);
             frontier.front()->Me->setPen(whitePen);
             scene->addItem(frontier.front()->Me);
-            std::stack<std::shared_ptr<Node>> short_dir;
 
+            std::stack<std::shared_ptr<Node>> short_dir;
             make_dir(short_dir,  end);
 
             QGraphicsRectItem *Dir;
@@ -247,12 +406,16 @@ void MazeGUI::nextbtnPressed()
                     if((short_dir.top()->Directions)["North"].first == short_dir.top()->parent)
                     {
                         Dir = new QGraphicsRectItem(QRectF(short_dir.top()->recGroup->pos().rx()-2.5,short_dir.top()->recGroup->pos().ry()-25,5,30));
+                        masir.push_back(Dir);
                     }else if((short_dir.top()->Directions)["South"].first == short_dir.top()->parent){
                         Dir = new QGraphicsRectItem(QRectF(short_dir.top()->recGroup->pos().rx()-2.5,short_dir.top()->recGroup->pos().ry(),5,30));
+                        masir.push_back(Dir);
                     }else if((short_dir.top()->Directions)["East"].first == short_dir.top()->parent){
                         Dir = new QGraphicsRectItem(QRectF(short_dir.top()->recGroup->pos().rx()-2.5,short_dir.top()->recGroup->pos().ry()-2.5,30,5));
+                        masir.push_back(Dir);
                     }else{
                         Dir = new QGraphicsRectItem(QRectF(short_dir.top()->recGroup->pos().rx()-30,short_dir.top()->recGroup->pos().ry()-2.5,30,5));
+                        masir.push_back(Dir);
                     }
                     Dir->setBrush(whiteBrush);
                     Dir->setPen(whitePen);
@@ -260,16 +423,28 @@ void MazeGUI::nextbtnPressed()
                 }
                 short_dir.pop();
             }
-
+            ui->nextstepbtn->setHidden(true);
+            ui->nextstepbtn->setEnabled(false);
         }
     }
 }
 
 void MazeGUI::BFSbtnPressed()
 {
+    ui->BFSbtn->setEnabled(false);
+    ui->BFSbtn->setHidden(true);
     ui->DFSbtn->setEnabled(false);
+    ui->DFSbtn->setHidden(true);
+    ui->nextstepbtn->setHidden(false);
+    ui->anotherwaybtn->setHidden(false);
+    ui->HTSlabel->setText("BFS");
+
+    ui->steplabel->setHidden(false);
+    ui->stepnumber->setHidden(false);
+
     DFS_or_BFS = 'b';
     unvisiting();
+    visitedNodes.clear();
     QBrush whiteBrush(Qt::white);
     QPen whitePen(Qt::white);
     whitePen.setWidth(0);
@@ -278,7 +453,6 @@ void MazeGUI::BFSbtnPressed()
     start->Me->setPen(whitePen);
     scene->addItem(start->Me);
     ui->nextstepbtn->setEnabled(true);
-    start->visited = true;
     frontier.push(start);
 }
 
@@ -290,7 +464,7 @@ void MazeGUI::fill()
         for (int j = 0; j < col; j++)
         {
             auto n{std::make_shared<MazeGUI::Node>(i*col + j)};
-            n->recGroup->setPos(30*j-30,30*i-30);
+            n->recGroup->setPos(30*j-30*col/2,30*i-30*row/2);
             temp.push_back(n);
         }
         Board.push_back(temp);
@@ -300,16 +474,16 @@ void MazeGUI::fill()
 
 void MazeGUI::set_margin()
 {
-    for(auto N:Board.front())
+    for(auto& N:Board.front())
     {
         (N->Directions)["North"].second = -1;
     }
-    for(auto v:Board)
+    for(auto& v:Board)
     {
         (v.front()->Directions)["West"].second = -1;
         (v.back()->Directions)["East"].second = -1;
     }
-    for(auto N:Board.back())
+    for(auto& N:Board.back())
     {
         (N->Directions)["South"].second = -1;
     }
@@ -358,33 +532,65 @@ void MazeGUI::Maze_Generator()
     myDirection.top()->visited = true;
     visited_counter++;
     Go_to_Generation(myDirection);
+
     Add_walls();
+    unvisiting();
+    std::cout << "hd" << std::endl;
+    find_end();
+
+    unvisiting();
     paint_walls();
+}
+
+void MazeGUI::find_end()
+{
+    std::queue<std::shared_ptr<Node>> fr;
+    fr.push(start);
+    int visited_node_counter=0;
+    int levelRange{};
+    if(ui->levelBox->currentText() == "Easy")
+        levelRange = row*col/4;
+    else if(ui->levelBox->currentText() == "Normal")
+        levelRange = row*col/2;
+    else if(ui->levelBox->currentText() == "Hard")
+        levelRange = 3*row*col/4;
+
+
+    while(visited_node_counter < row*col)
+    {
+
+        fr.front()->visited = true;
+        visited_node_counter++;
+        fr.front()->Update_availableDirections();
+        std::shared_ptr<Node> p = fr.front();
+        fr.pop();
+        for(auto& ch : p->availableDirections)
+        {
+            ch.first->parent = p;
+            fr.push(ch.first);
+            fr.front()->Update_availableDirections();
+        }
+
+        if (visited_node_counter == levelRange)
+        {
+            if(p->availableDirections.empty())
+                end = p;
+            else
+                end = p->availableDirections[MazeGUI::Random_generator(p->availableDirections.size())].first;
+            end->is_end = true;
+            break;
+        }
+
+    }
 }
 
 int MazeGUI::Random_generator(size_t size)
 {
-//    std::random_device random_device; // create object for seeding
-//    std::mt19937 engine{random_device()}; // create engine and seed it
-//    std::uniform_int_distribution<> dist(0,size); // create distribution for integers with [1; 9] range
-//    std::cout << dist(engine) << ", " << size << std::endl;
-//    return dist(engine)-1;
-    srand(time(NULL));
-    int val = rand()%(size);
-    std::cout << rand() << ", " << size << std::endl;
-    return val;
-//    auto tstart = std::chrono::high_resolution_clock::now();
-//    std::time_t timenow = std::chrono::system_clock::to_time_t(tstart);
-//    std::cout << timenow << ", " << size << std::endl;
-//    return timenow%size;
-//    uint64_t us = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
-//    return us%size;
-}
-
-long MazeGUI::fibo(unsigned n)
-{
-    if(n < 2) return n;
-    return fibo(n-1) + fibo(n-2);
+    quint32 val = QRandomGenerator::global()->generate();
+    if (size != 0)
+        return val%size;
+    else
+        return -1;
 }
 
 void MazeGUI::Go_to_Generation(std::stack<std::shared_ptr<Node>> myDirection)
@@ -394,6 +600,7 @@ void MazeGUI::Go_to_Generation(std::stack<std::shared_ptr<Node>> myDirection)
     {
         if (!myDirection.top()->availableDirections.empty())
         {
+
             size_t mysize = (myDirection.top()->availableDirections).size();
             std::pair<std::shared_ptr<Node>,int> selected = make_pair(myDirection.top()->availableDirections[ MazeGUI::Random_generator(mysize)].first,myDirection.top()->availableDirections[MazeGUI::Random_generator(mysize)].second);
             selected.first->visited = true;
@@ -410,11 +617,6 @@ void MazeGUI::Go_to_Generation(std::stack<std::shared_ptr<Node>> myDirection)
             myDirection.top()->Update_availableDirections();
             Go_to_Generation(myDirection);
         }
-    }
-    else
-    {
-        myDirection.top()->is_end = true;
-        end = myDirection.top();
     }
 }
 
@@ -491,21 +693,22 @@ void MazeGUI::Add_walls()
 
 void MazeGUI::paint_walls()
 {
-    QBrush cyanBrush(Qt::cyan);
+    QColor red("#CB4E4E");
+    QColor yellow("#FDCA35");
+    QColor blue("#0EA5A7");
+    QBrush redBrush(red);
+    QBrush blueBrush(blue);
+    QBrush yellowBrush(yellow);
+    QBrush blackBrush(Qt::black);
+    QPen redPen(red);
+    redPen.setWidth(0);
     QPen cyanPen(Qt::cyan);
     cyanPen.setWidth(0);
-
-    QBrush greenBrush(Qt::green);
-    QPen greenPen(Qt::green);
-    greenPen.setWidth(0);
-
-    QBrush redBrush(Qt::red);
-    QPen redPen(Qt::red);
-    redPen.setWidth(0);
-
-    QBrush blackBrush(Qt::black);
+    QPen yellowPen(yellow);
+    yellowPen.setWidth(0);
     QPen blackPen(Qt::black);
     blackPen.setWidth(0);
+
     for (int i = 0; i < row; i++)
     {
         for (int j = 0; j < col; j++)
@@ -513,21 +716,21 @@ void MazeGUI::paint_walls()
             if(Board[i][j]->is_start)
             {
               Qstart = new QGraphicsEllipseItem(Board[i][j]->recGroup->pos().rx()-8,Board[i][j]->recGroup->pos().ry()-8,16,16);
-              Qstart->setBrush(redBrush);
-              Qstart->setPen(redPen);
+              Qstart->setBrush(blueBrush);
+              Qstart->setPen(blackPen);
             }
             if(Board[i][j]->is_end)
             {
                 Qend = new QGraphicsEllipseItem(Board[i][j]->recGroup->pos().rx()-8,Board[i][j]->recGroup->pos().ry()-8,16,16);
-                Qend->setBrush(greenBrush);
-                Qend->setPen(greenPen);
+                Qend->setBrush(yellowBrush);
+                Qend->setPen(blackPen);
             }
             if((Board[i][j]->Directions)["North"].second == 1)
             {
                 Board[i][j]->top = new QGraphicsItemGroup(Board[i][j]->recGroup);
                 QGraphicsRectItem *topBox = new QGraphicsRectItem(QRectF(-20,-15,40,5),Board[i][j]->top);
-                topBox->setBrush(cyanBrush);
-                topBox->setPen(cyanPen);
+                topBox->setBrush(redBrush);
+                topBox->setPen(redPen);
                 Board[i][j]->top->setZValue(-1);
             }else if((Board[i][j]->Directions)["North"].second == -1)
             {
@@ -541,8 +744,8 @@ void MazeGUI::paint_walls()
             {
                 Board[i][j]->down = new QGraphicsItemGroup(Board[i][j]->recGroup);
                 QGraphicsRectItem *downtBox = new QGraphicsRectItem(QRectF(-20,10,40,5),Board[i][j]->down);
-                downtBox->setBrush(cyanBrush);
-                downtBox->setPen(cyanPen);
+                downtBox->setBrush(redBrush);
+                downtBox->setPen(redPen);
                 Board[i][j]->down->setZValue(-1);
             }else if((Board[i][j]->Directions)["South"].second ==  -1)
             {
@@ -556,8 +759,8 @@ void MazeGUI::paint_walls()
             {
                 Board[i][j]->right = new QGraphicsItemGroup(Board[i][j]->recGroup);
                 QGraphicsRectItem *rightBox = new QGraphicsRectItem(QRectF(10,-20,5,40),Board[i][j]->right);
-                rightBox->setBrush(cyanBrush);
-                rightBox->setPen(cyanPen);
+                rightBox->setBrush(redBrush);
+                rightBox->setPen(redPen);
                 Board[i][j]->right->setZValue(-1);
             }else if((Board[i][j]->Directions)["East"].second == -1)
             {
@@ -571,8 +774,8 @@ void MazeGUI::paint_walls()
             {
                 Board[i][j]->left = new QGraphicsItemGroup(Board[i][j]->recGroup);
                 QGraphicsRectItem *leftBox = new QGraphicsRectItem(QRectF(-15,-20,5,40),Board[i][j]->left);
-                leftBox->setBrush(cyanBrush);
-                leftBox->setPen(cyanPen);
+                leftBox->setBrush(redBrush);
+                leftBox->setPen(redPen);
                 Board[i][j]->left->setZValue(-1);
             }else if((Board[i][j]->Directions)["West"].second == -1)
             {
@@ -589,89 +792,6 @@ void MazeGUI::paint_walls()
 
     scene->addItem(Qstart);
     scene->addItem(Qend);
-//    for (int i = 0; i < row; i++)
-//    {
-//        for (int j = 0; j < col; j++)
-//        {
-//            if((Board[i][j]->Directions)["North"].second == 1)
-//            {
-//                Board[i][j]->top = new QGraphicsItemGroup(Board[i][j]->recGroup);
-//                QGraphicsRectItem *topBox = new QGraphicsRectItem(QRectF(-20,-15,40,5),Board[i][j]->top);
-//                topBox->setBrush(cyanBrush);
-//                topBox->setPen(cyanPen);
-//                topBox->setZValue(-1);
-//            }
-//            if((Board[i][j]->Directions)["South"].second == 1)
-//            {
-//                Board[i][j]->down = new QGraphicsItemGroup(Board[i][j]->recGroup);
-//                QGraphicsRectItem *downtBox = new QGraphicsRectItem(QRectF(-20,10,40,5),Board[i][j]->down);
-//                downtBox->setBrush(cyanBrush);
-//                downtBox->setPen(cyanPen);
-//                downtBox->setZValue(-2);
-//            }
-//            if((Board[i][j]->Directions)["East"].second == 1)
-//            {
-//                Board[i][j]->right = new QGraphicsItemGroup(Board[i][j]->recGroup);
-//                QGraphicsRectItem *rightBox = new QGraphicsRectItem(QRectF(10,-20,5,40),Board[i][j]->right);
-//                rightBox->setBrush(cyanBrush);
-//                rightBox->setPen(cyanPen);
-//                rightBox->setZValue(-3);
-//            }
-//            if((Board[i][j]->Directions)["West"].second == 1)
-//            {
-//                Board[i][j]->left = new QGraphicsItemGroup(Board[i][j]->recGroup);
-//                QGraphicsRectItem *leftBox = new QGraphicsRectItem(QRectF(-15,-20,5,40),Board[i][j]->left);
-//                leftBox->setBrush(cyanBrush);
-//                leftBox->setPen(cyanPen);
-//                leftBox->setZValue(-4);
-//            }
-//            scene->addItem(Board[i][j]->recGroup);
-
-//        }
-
-//    }
-
-
-//    for (int i = 0; i < row; i++)
-//    {
-//        for (int j = 0; j < col; j++)
-//        {
-//            if((Board[i][j]->Directions)["North"].second == -1)
-//            {
-//                Board[i][j]->top = new QGraphicsItemGroup(Board[i][j]->recGroup);
-//                QGraphicsRectItem *topBox = new QGraphicsRectItem(QRectF(-20,-15,40,5),Board[i][j]->top);
-//                topBox->setBrush(blackBrush);
-//                topBox->setPen(blackPen);
-//                topBox->setZValue(1);
-//            }
-//            if((Board[i][j]->Directions)["South"].second ==  -1)
-//            {
-//                Board[i][j]->down = new QGraphicsItemGroup(Board[i][j]->recGroup);
-//                QGraphicsRectItem *downtBox = new QGraphicsRectItem(QRectF(-20,10,40,5),Board[i][j]->down);
-//                downtBox->setBrush(blackBrush);
-//                downtBox->setPen(blackPen);
-//                downtBox->setZValue(2);
-//            }
-//            if((Board[i][j]->Directions)["East"].second == -1)
-//            {
-//                Board[i][j]->right = new QGraphicsItemGroup(Board[i][j]->recGroup);
-//                QGraphicsRectItem *rightBox = new QGraphicsRectItem(QRectF(10,-20,5,40),Board[i][j]->right);
-//                rightBox->setBrush(blackBrush);
-//                rightBox->setPen(blackPen);
-//                rightBox->setZValue(3);
-//            }
-//            if((Board[i][j]->Directions)["West"].second == -1)
-//            {
-//                Board[i][j]->left = new QGraphicsItemGroup(Board[i][j]->recGroup);
-//                QGraphicsRectItem *leftBox = new QGraphicsRectItem(QRectF(-15,-20,5,40),Board[i][j]->left);
-//                leftBox->setBrush(blackBrush);
-//                leftBox->setPen(blackPen);
-//                leftBox->setZValue(4);
-//            }
-//            scene->addItem(Board[i][j]->recGroup);
-//        }
-
-//    }
 }
 
 void MazeGUI::unvisiting()
@@ -699,10 +819,5 @@ void MazeGUI::make_dir(std::stack<std::shared_ptr<Node>>& short_dir, std::shared
      short_dir.push(node);
      if (node->parent != nullptr)
         make_dir(short_dir, node->parent);
-//    if (parent != nullptr)
-//    {
-//        short_dir.push(parent);
-//        parent->make_dir(short_dir);
-//    }
 
 }
