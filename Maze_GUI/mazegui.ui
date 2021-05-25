@@ -284,7 +284,7 @@ font-size:18px;
       <property name="geometry">
        <rect>
         <x>30</x>
-        <y>120</y>
+        <y>90</y>
         <width>121</width>
         <height>28</height>
        </rect>
@@ -308,7 +308,7 @@ font-size:18px;
       <property name="geometry">
        <rect>
         <x>32</x>
-        <y>170</y>
+        <y>140</y>
         <width>121</width>
         <height>28</height>
        </rect>
@@ -425,6 +425,30 @@ font-size:20px;
       </property>
       <property name="text">
        <string>change way</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="BSbtn">
+      <property name="geometry">
+       <rect>
+        <x>30</x>
+        <y>190</y>
+        <width>121</width>
+        <height>28</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">QPushButton#BSbtn{
+    background-color: #CB4E4E;
+    border-style: outset;
+    border-radius: 10px;
+	font: 8pt &quot;Franklin Gothic Demi&quot;;
+    border-color: beige;
+	color:#2A3C3D;
+	font-size:18px;
+}</string>
+      </property>
+      <property name="text">
+       <string>Bidirectional</string>
       </property>
      </widget>
     </widget>

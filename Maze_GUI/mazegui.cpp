@@ -7,7 +7,7 @@
 MazeGUI::Node::Node(size_t _id)
     : id{_id}
 {
-     QColor red("#CB4E4E");
+     QColor red(203,78,78);
      QBrush redBrush(red);
      QPen redPen(red);
      redPen.setWidth(0);
@@ -78,6 +78,9 @@ MazeGUI::MazeGUI(QWidget *parent)
     //BFSbtn
     connect(ui->DFSbtn, SIGNAL(released()), this, SLOT(DFSbtnPressed()));
 
+    //BSbtn
+    connect(ui->BSbtn, SIGNAL(released()), this, SLOT(BSbtnPressed()));
+
     //nextbtn
     connect(ui->nextstepbtn, SIGNAL(released()), this, SLOT(nextbtnPressed()));
 
@@ -91,13 +94,11 @@ void MazeGUI::onProgress( int i )
     ui->progressBar->setValue(i);
 }
 
-
 void MazeGUI::ProgressFinished()
 {
     ui->welcomePage->setHidden(true);
     ui->mainPage->setHidden(false);
 }
-
 
 MazeGUI::~MazeGUI()
 {
@@ -176,9 +177,11 @@ void MazeGUI::clear()
     while (! frontier.empty())
         frontier.pop();
 
+    while (! end_frontier.empty())
+        end_frontier.pop();
+
     ui->graphicsView->update();
 }
-
 
 void MazeGUI::gobtnPressed()
 {
@@ -188,6 +191,8 @@ void MazeGUI::gobtnPressed()
     ui->DFSbtn->setEnabled(true);
     ui->BFSbtn->setHidden(false);
     ui->BFSbtn->setEnabled(true);
+    ui->BSbtn->setHidden(false);
+    ui->BSbtn->setEnabled(true);
     ui->steplabel->setHidden(true);
     ui->stepnumber->setHidden(true);
     ui->nextstepbtn->setHidden(true);
@@ -209,6 +214,9 @@ void MazeGUI::anotherbtnPressed()
     while (! frontier.empty())
         frontier.pop();
 
+    while (! end_frontier.empty())
+        end_frontier.pop();
+
     if(!masir.empty())
     {
         for(auto& rec:masir)
@@ -222,6 +230,8 @@ void MazeGUI::anotherbtnPressed()
     ui->DFSbtn->setEnabled(true);
     ui->BFSbtn->setHidden(false);
     ui->BFSbtn->setEnabled(true);
+    ui->BSbtn->setHidden(false);
+    ui->BSbtn->setEnabled(true);
     ui->steplabel->setHidden(true);
     ui->stepnumber->setHidden(true);
     ui->nextstepbtn->setHidden(true);
@@ -260,6 +270,7 @@ void MazeGUI::clearbtnPressed()
     ui->logoWidget->setHidden(false);
 
     ui->gobtn->setHidden(true);
+    ui->anotherwaybtn->setHidden(true);
 }
 
 void MazeGUI::DFSbtnPressed()
@@ -269,11 +280,13 @@ void MazeGUI::DFSbtnPressed()
     whitePen.setWidth(0);
 
     ui->HTSlabel->setText("DFS");
-    DFS_or_BFS = 'd';
+    DFS_or_BFS_or_BS = 'd';
     ui->BFSbtn->setEnabled(false);
     ui->BFSbtn->setHidden(true);
     ui->DFSbtn->setEnabled(false);
     ui->DFSbtn->setHidden(true);
+    ui->BSbtn->setEnabled(false);
+    ui->BSbtn->setHidden(true);
     ui->nextstepbtn->setHidden(false);
     ui->anotherwaybtn->setHidden(false);
     ui->steplabel->setHidden(false);
@@ -301,10 +314,10 @@ void MazeGUI::nextbtnPressed()
     whitePen.setWidth(0);
     QPen blackPen(Qt::black);
     blackPen.setWidth(0);
-    QColor red("#CB4E4E");
+    QColor red(203,78,78);
     QBrush redBrush(red);
 
-    if(DFS_or_BFS == 'd'){
+    if(DFS_or_BFS_or_BS == 'd'){
         if (True_Dir.top() != end)
         {
                if (!True_Dir.top()->availableDirections.empty())
@@ -366,7 +379,8 @@ void MazeGUI::nextbtnPressed()
             ui->nextstepbtn->setHidden(true);
             ui->nextstepbtn->setEnabled(false);
         }
-    }else{
+    }
+    if(DFS_or_BFS_or_BS == 'b'){
         if(frontier.front() != end)
         {
             frontier.front()->visited = true;
@@ -397,7 +411,7 @@ void MazeGUI::nextbtnPressed()
             scene->addItem(frontier.front()->Me);
 
             std::stack<std::shared_ptr<Node>> short_dir;
-            make_dir(short_dir,  end);
+            make_dir(short_dir,  end, false);
 
             QGraphicsRectItem *Dir;
             while (!short_dir.empty()) {
@@ -427,6 +441,148 @@ void MazeGUI::nextbtnPressed()
             ui->nextstepbtn->setEnabled(false);
         }
     }
+    if(DFS_or_BFS_or_BS == 'B')
+    {
+        find_bidirectional(frontier, false);
+        find_bidirectional(end_frontier, true);
+        if(frontier.front()->end_visit)
+        {
+            paint_dir(frontier.front());
+        }else if(end_frontier.front()->visited)
+        {
+            paint_dir(end_frontier.front());
+        }else if(frontier.front() == end_frontier.front())
+        {
+            QColor yellow(253,202,53);
+            QBrush yellowBrush(yellow);
+            QPen yellowPen(yellow);
+            yellowPen.setWidth(0);
+            frontier.front()->Me = new QGraphicsEllipseItem(frontier.front()->recGroup->pos().rx()-5,frontier.front()->recGroup->pos().ry()-5,10,10);
+            frontier.front()->Me->setBrush(yellowBrush);
+            frontier.front()->Me->setPen(yellowPen);
+            scene->addItem(frontier.front()->Me);
+            paint_dir(frontier.front());
+        }
+    }
+}
+
+void MazeGUI::paint_dir(std::shared_ptr<Node> middle)
+{
+    QColor yellow(253,202,53);
+    QColor blue(14,165,167);
+    QBrush blueBrush(blue);
+    QBrush yellowBrush(yellow);
+    QPen bluePen(blue);
+    bluePen.setWidth(0);
+    QPen yellowPen(yellow);
+    yellowPen.setWidth(0);
+    std::stack<std::shared_ptr<Node>> short_dir;
+    make_dir(short_dir,  middle, false);
+    QGraphicsRectItem *Dir;
+    while (!short_dir.empty()) {
+        short_dir.top()->is_true_dir = true;
+        if(short_dir.top()->parent){
+            if((short_dir.top()->Directions)["North"].first == short_dir.top()->parent)
+            {
+                Dir = new QGraphicsRectItem(QRectF(short_dir.top()->recGroup->pos().rx()-2.5,short_dir.top()->recGroup->pos().ry()-25,5,30));
+                masir.push_back(Dir);
+            }else if((short_dir.top()->Directions)["South"].first == short_dir.top()->parent){
+                Dir = new QGraphicsRectItem(QRectF(short_dir.top()->recGroup->pos().rx()-2.5,short_dir.top()->recGroup->pos().ry(),5,30));
+                masir.push_back(Dir);
+            }else if((short_dir.top()->Directions)["East"].first == short_dir.top()->parent){
+                Dir = new QGraphicsRectItem(QRectF(short_dir.top()->recGroup->pos().rx()-2.5,short_dir.top()->recGroup->pos().ry()-2.5,30,5));
+                masir.push_back(Dir);
+            }else{
+                Dir = new QGraphicsRectItem(QRectF(short_dir.top()->recGroup->pos().rx()-30,short_dir.top()->recGroup->pos().ry()-2.5,30,5));
+                masir.push_back(Dir);
+            }
+            Dir->setBrush(blueBrush);
+            Dir->setPen(bluePen);
+            scene->addItem(Dir);
+           }
+           short_dir.pop();
+    }
+    if(middle->end_parent != nullptr)
+    {
+        std::stack<std::shared_ptr<Node>> short_dir_end;
+        make_dir(short_dir_end,  middle, true);
+        QGraphicsRectItem *Dir;
+        while (!short_dir_end.empty()) {
+            short_dir_end.top()->is_true_dir = true;
+            if(short_dir_end.top()->parent){
+                if((short_dir_end.top()->Directions)["North"].first == short_dir_end.top()->parent)
+                {
+                    Dir = new QGraphicsRectItem(QRectF(short_dir_end.top()->recGroup->pos().rx()-2.5,short_dir_end.top()->recGroup->pos().ry()-25,5,30));
+                    masir.push_back(Dir);
+                }else if((short_dir_end.top()->Directions)["South"].first == short_dir_end.top()->parent){
+                    Dir = new QGraphicsRectItem(QRectF(short_dir_end.top()->recGroup->pos().rx()-2.5,short_dir_end.top()->recGroup->pos().ry(),5,30));
+                    masir.push_back(Dir);
+                }else if((short_dir_end.top()->Directions)["East"].first == short_dir_end.top()->parent){
+                    Dir = new QGraphicsRectItem(QRectF(short_dir_end.top()->recGroup->pos().rx()-2.5,short_dir_end.top()->recGroup->pos().ry()-2.5,30,5));
+                    masir.push_back(Dir);
+                }else{
+                    Dir = new QGraphicsRectItem(QRectF(short_dir_end.top()->recGroup->pos().rx()-30,short_dir_end.top()->recGroup->pos().ry()-2.5,30,5));
+                    masir.push_back(Dir);
+                }
+                Dir->setBrush(yellowBrush);
+                Dir->setPen(yellowPen);
+                scene->addItem(Dir);
+               }
+               short_dir_end.pop();
+        }
+    }
+    ui->nextstepbtn->setHidden(true);
+    ui->nextstepbtn->setEnabled(false);
+}
+
+void MazeGUI::find_bidirectional(std::queue<std::shared_ptr<Node>>& fr , bool end_path)
+{
+    QColor yellow(253,202,53);
+    QColor blue(14,165,167);
+    QBrush blueBrush(blue);
+    QBrush yellowBrush(yellow);
+    QPen bluePen(blue);
+    bluePen.setWidth(0);
+    QPen yellowPen(yellow);
+    yellowPen.setWidth(0);
+
+    std::shared_ptr<Node> p = fr.front();
+    if(end_path)
+    {
+        fr.front()->end_visit = true;
+        visitedNodes.push_back(fr.front());
+        fr.front()->Update_availableDirections_end();
+        p->Me = new QGraphicsEllipseItem(p->recGroup->pos().rx()-5,p->recGroup->pos().ry()-5,10,10);
+        p->Me->setBrush(yellowBrush);
+        p->Me->setPen(yellowPen);
+        scene->addItem(p->Me);
+    }
+    else
+    {
+        fr.front()->visited = true;
+        visitedNodes.push_back(fr.front());
+        fr.front()->Update_availableDirections();
+        p->Me = new QGraphicsEllipseItem(p->recGroup->pos().rx()-5,p->recGroup->pos().ry()-5,10,10);
+        p->Me->setBrush(blueBrush);
+        p->Me->setPen(bluePen);
+        scene->addItem(p->Me);
+    }
+
+    fr.pop();
+    for(auto& ch : p->availableDirections)
+    {
+        if(end_path)
+        {
+            ch.first->end_parent = p;
+            fr.push(ch.first);
+            fr.front()->Update_availableDirections_end();
+        }
+        else{
+            ch.first->parent = p;
+            fr.push(ch.first);
+            fr.front()->Update_availableDirections();
+        }
+    }
 }
 
 void MazeGUI::BFSbtnPressed()
@@ -435,6 +591,8 @@ void MazeGUI::BFSbtnPressed()
     ui->BFSbtn->setHidden(true);
     ui->DFSbtn->setEnabled(false);
     ui->DFSbtn->setHidden(true);
+    ui->BSbtn->setEnabled(false);
+    ui->BSbtn->setHidden(true);
     ui->nextstepbtn->setHidden(false);
     ui->anotherwaybtn->setHidden(false);
     ui->HTSlabel->setText("BFS");
@@ -442,7 +600,7 @@ void MazeGUI::BFSbtnPressed()
     ui->steplabel->setHidden(false);
     ui->stepnumber->setHidden(false);
 
-    DFS_or_BFS = 'b';
+    DFS_or_BFS_or_BS = 'b';
     unvisiting();
     visitedNodes.clear();
     QBrush whiteBrush(Qt::white);
@@ -454,6 +612,49 @@ void MazeGUI::BFSbtnPressed()
     scene->addItem(start->Me);
     ui->nextstepbtn->setEnabled(true);
     frontier.push(start);
+}
+
+void MazeGUI::BSbtnPressed()
+{
+    ui->BFSbtn->setEnabled(false);
+    ui->BFSbtn->setHidden(true);
+    ui->DFSbtn->setEnabled(false);
+    ui->DFSbtn->setHidden(true);
+    ui->BSbtn->setEnabled(false);
+    ui->BSbtn->setHidden(true);
+    ui->nextstepbtn->setHidden(false);
+    ui->anotherwaybtn->setHidden(false);
+    ui->HTSlabel->setText("Bidirectional");
+
+    ui->steplabel->setHidden(false);
+    ui->stepnumber->setHidden(false);
+
+    DFS_or_BFS_or_BS = 'B';
+    unvisiting();
+    visitedNodes.clear();
+
+    QColor yellow(253,202,53);
+    QColor blue(14,165,167);
+    QBrush blueBrush(blue);
+    QBrush yellowBrush(yellow);
+    QPen bluePen(blue);
+    bluePen.setWidth(0);
+    QPen yellowPen(yellow);
+    yellowPen.setWidth(0);
+
+    start->Me = new QGraphicsEllipseItem(start->recGroup->pos().rx()-5,start->recGroup->pos().ry()-5,10,10);
+    start->Me->setBrush(blueBrush);
+    start->Me->setPen(bluePen);
+    scene->addItem(start->Me);
+    ui->nextstepbtn->setEnabled(true);
+    frontier.push(start);
+
+    end->Me = new QGraphicsEllipseItem(end->recGroup->pos().rx()-5,end->recGroup->pos().ry()-5,10,10);
+    end->Me->setBrush(yellowBrush);
+    end->Me->setPen(yellowPen);
+    scene->addItem(end->Me);
+    ui->nextstepbtn->setEnabled(true);
+    end_frontier.push(end);
 }
 
 void MazeGUI::fill()
@@ -535,7 +736,6 @@ void MazeGUI::Maze_Generator()
 
     Add_walls();
     unvisiting();
-    std::cout << "hd" << std::endl;
     find_end();
 
     unvisiting();
@@ -634,6 +834,20 @@ void MazeGUI::Node::Update_availableDirections()
     }
 }
 
+void MazeGUI::Node::Update_availableDirections_end()
+{
+
+    std::vector<std::pair<std::shared_ptr<Node>,int>>::iterator it;
+    it = availableDirections.begin();
+    for (size_t i = 0; i < availableDirections.size(); i++)
+    {
+        if (availableDirections[i].first->end_visit)
+        {
+            availableDirections.erase(it+i);
+        }
+    }
+}
+
 void MazeGUI::Node::set_dir_flags(std::shared_ptr<Node> select)
 {
     if (Directions["North"].first == select)
@@ -693,9 +907,9 @@ void MazeGUI::Add_walls()
 
 void MazeGUI::paint_walls()
 {
-    QColor red("#CB4E4E");
-    QColor yellow("#FDCA35");
-    QColor blue("#0EA5A7");
+    QColor red(203,78,78);
+    QColor yellow(253,202,53);
+    QColor blue(14,165,167);
     QBrush redBrush(red);
     QBrush blueBrush(blue);
     QBrush yellowBrush(yellow);
@@ -802,6 +1016,7 @@ void MazeGUI::unvisiting()
         {
             Board[i][j]->availableDirections.clear();
             Board[i][j]->visited = false;
+            Board[i][j]->end_visit = false;
             if ((Board[i][j]->Directions)["North"].second != -1)
                 Board[i][j]->availableDirections.push_back((Board[i][j]->Directions)["North"]);
             if ((Board[i][j]->Directions)["South"].second != -1)
@@ -814,10 +1029,19 @@ void MazeGUI::unvisiting()
     }
 }
 
-void MazeGUI::make_dir(std::stack<std::shared_ptr<Node>>& short_dir, std::shared_ptr<MazeGUI::Node> node)
+void MazeGUI::make_dir(std::stack<std::shared_ptr<Node>>& short_dir, std::shared_ptr<MazeGUI::Node> node, bool is_end)
 {
      short_dir.push(node);
-     if (node->parent != nullptr)
-        make_dir(short_dir, node->parent);
+     if(is_end)
+     {
+         if (node->end_parent != nullptr)
+            make_dir(short_dir, node->end_parent,true);
+     }
+     else
+     {
+         if (node->parent != nullptr)
+            make_dir(short_dir, node->parent,false);
+     }
+
 
 }

@@ -48,6 +48,7 @@ public:
     QLabel *steplabel;
     QLabel *stepnumber;
     QPushButton *anotherwaybtn;
+    QPushButton *BSbtn;
     QWidget *logoWidget;
     QLabel *maze2;
     QPushButton *gobtn;
@@ -190,7 +191,7 @@ public:
         HTSlabel->setAlignment(Qt::AlignCenter);
         DFSbtn = new QPushButton(controlBar);
         DFSbtn->setObjectName(QString::fromUtf8("DFSbtn"));
-        DFSbtn->setGeometry(QRect(30, 120, 121, 28));
+        DFSbtn->setGeometry(QRect(30, 90, 121, 28));
         DFSbtn->setStyleSheet(QString::fromUtf8("QPushButton#DFSbtn {\n"
 "    background-color: #CB4E4E;\n"
 "    border-style: outset;\n"
@@ -202,7 +203,7 @@ public:
 "}"));
         BFSbtn = new QPushButton(controlBar);
         BFSbtn->setObjectName(QString::fromUtf8("BFSbtn"));
-        BFSbtn->setGeometry(QRect(32, 170, 121, 28));
+        BFSbtn->setGeometry(QRect(32, 140, 121, 28));
         BFSbtn->setStyleSheet(QString::fromUtf8("QPushButton#BFSbtn {\n"
 "    background-color: #CB4E4E;\n"
 "    border-style: outset;\n"
@@ -258,6 +259,18 @@ public:
 "	color:#2A3C3D;\n"
 "	font-size:17px;\n"
 "	font-weight:bold;\n"
+"}"));
+        BSbtn = new QPushButton(controlBar);
+        BSbtn->setObjectName(QString::fromUtf8("BSbtn"));
+        BSbtn->setGeometry(QRect(30, 190, 121, 28));
+        BSbtn->setStyleSheet(QString::fromUtf8("QPushButton#BSbtn{\n"
+"    background-color: #CB4E4E;\n"
+"    border-style: outset;\n"
+"    border-radius: 10px;\n"
+"	font: 8pt \"Franklin Gothic Demi\";\n"
+"    border-color: beige;\n"
+"	color:#2A3C3D;\n"
+"	font-size:18px;\n"
 "}"));
         logoWidget = new QWidget(mainPage);
         logoWidget->setObjectName(QString::fromUtf8("logoWidget"));
@@ -362,6 +375,7 @@ public:
         steplabel->setText(QCoreApplication::translate("MazeGUI", "STEP:", nullptr));
         stepnumber->setText(QString());
         anotherwaybtn->setText(QCoreApplication::translate("MazeGUI", "change way", nullptr));
+        BSbtn->setText(QCoreApplication::translate("MazeGUI", "Bidirectional", nullptr));
         maze2->setText(QCoreApplication::translate("MazeGUI", "MAZE", nullptr));
         gobtn->setText(QCoreApplication::translate("MazeGUI", "Go!", nullptr));
         logo2->setText(QCoreApplication::translate("MazeGUI", "TextLabel", nullptr));

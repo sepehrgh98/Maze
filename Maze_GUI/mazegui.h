@@ -42,6 +42,7 @@ public:
         QGraphicsItemGroup* left;
         QGraphicsItemGroup* down;
         bool visited = false;
+        bool end_visit = false;
         bool is_start = false;
         bool is_end = false;
         bool is_true_dir = false;
@@ -54,9 +55,11 @@ public:
             {"West" , std::pair<std::shared_ptr<Node>,int>{nullptr,0}}
         };
         void Update_availableDirections();
+        void Update_availableDirections_end();
         void set_dir_flags(std::shared_ptr<Node> select);
         QGraphicsEllipseItem * Me{nullptr};
         std::shared_ptr<Node> parent{nullptr};
+        std::shared_ptr<Node> end_parent{nullptr};
         size_t id;
     };
     MazeGUI(QWidget *parent = nullptr);
@@ -83,13 +86,16 @@ private:
     void Add_walls();
     void paint_walls();
     void clear();
-    void make_dir(std::stack<std::shared_ptr<Node>>&, std::shared_ptr<Node>);
+    void make_dir(std::stack<std::shared_ptr<Node>>&, std::shared_ptr<Node>,bool);
     void find_end();
-    char DFS_or_BFS;
+    void find_bidirectional(std::queue<std::shared_ptr<Node>>&, bool end_path);
+    void paint_dir(std::shared_ptr<Node>);
+    char DFS_or_BFS_or_BS;
     int visited_counter = 0;
     size_t step{0};
     std::stack<std::shared_ptr<Node>> True_Dir;
     std::queue<std::shared_ptr<Node>> frontier;
+    std::queue<std::shared_ptr<Node>> end_frontier;
     std::vector<QGraphicsRectItem *> masir;
     std::vector<std::shared_ptr<Node>> visitedNodes;
 
@@ -101,6 +107,7 @@ private slots:
     void gobtnPressed();
     void DFSbtnPressed();
     void BFSbtnPressed();
+    void BSbtnPressed();
     void nextbtnPressed();
     void anotherbtnPressed();
     void onProgress( int i );
